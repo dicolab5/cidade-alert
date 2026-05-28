@@ -2,6 +2,384 @@
 <html>
 
 <head>
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        #cidade-info {
+            font-size: 0.9em;
+            margin-top: 4px;
+            color: #ecf0f1;
+        }
+        #cidade-info small {
+            opacity: 0.8;
+        }
+
+        /* Estilos do Modal */
+        .modal-os {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            overflow-y: auto;
+        }
+        .modal-os-content {
+            background-color: #fff;
+            margin: 50px auto;
+            padding: 20px;
+            width: 90%;
+            max-width: 800px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            animation: modalFadeIn 0.3s ease;
+        }
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: translateY(-50px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .modal-os-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #1976D2;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .modal-os-header h2 {
+            color: #1976D2;
+            margin: 0;
+        }
+        .close-modal {
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #999;
+            transition: color 0.3s;
+        }
+        .close-modal:hover {
+            color: #f44336;
+        }
+        .os-info {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        .os-info p {
+            margin: 8px 0;
+        }
+        .os-info strong {
+            color: #1976D2;
+        }
+        .os-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+        .btn-os {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        .btn-imprimir {
+            background: #4CAF50;
+            color: white;
+        }
+        .btn-imprimir:hover {
+            background: #45a049;
+        }
+        .btn-fechar {
+            background: #f44336;
+            color: white;
+        }
+        .btn-fechar:hover {
+            background: #da190b;
+        }
+        .btn-concluir {
+            background: #FF9800;
+            color: white;
+        }
+        .btn-concluir:hover {
+            background: #fb8c00;
+        }
+        .loading-endereco {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #1976D2;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-left: 8px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .endereco-sucesso {
+            color: #4CAF50;
+        }
+        .endereco-erro {
+            color: #f44336;
+        }
+        .setor-select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-top: 5px;
+        }
+        .card-acoes {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .btn-os-card {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .btn-concluir-card {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .btn-os-card:hover, .btn-concluir-card:hover {
+            opacity: 0.9;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="topbar">
+    <div class="title">
+        Cidade Alerta
+    </div>
+    <div class="user">
+        <div style="text-align: right;">
+            <span id="usuario"></span>
+            <div id="cidade-info"></div>
+            <small id="mensagens-info" style="color: #ffeb3b;"></small>
+        </div>
+        <button onclick="logout()">Sair</button>
+    </div>
+</div>
+
+<div class="container">
+    <h2>Painel de Ocorrências</h2>
+    <a href="nova-ocorrencia">
+        <button>Nova ocorrência</button>
+    </a>
+    <select id="filtro" onchange="carregar()">
+        <option value="">Todas</option>
+        <option value="aberto">Abertas</option>
+        <option value="concluido">Concluídas</option>
+    </select>
+    <p id="contador"></p>
+    <div id="categorias" style="margin-bottom:20px;"></div>
+    <div id="map"></div>
+    <div id="lista"></div>
+</div>
+
+<!-- Modal para Ordem de Serviço -->
+<div id="modalOS" class="modal-os">
+    <div class="modal-os-content">
+        <div class="modal-os-header">
+            <h2>📋 Ordem de Serviço</h2>
+            <span class="close-modal" onclick="fecharModalOS()">&times;</span>
+        </div>
+        <div id="modalOSContent">
+            <!-- Conteúdo da OS será carregado dinamicamente -->
+        </div>
+    </div>
+</div>
+
+<script>
+    const token = localStorage.getItem("token")
+    if(!token){
+        window.location="login"
+    }
+
+    // Recuperar dados do usuário
+    const usuarioSalvo = localStorage.getItem("usuario")
+    if (usuarioSalvo) {
+        try {
+            const userData = JSON.parse(usuarioSalvo)
+            document.getElementById("usuario").innerText = userData.email || "Administrador"
+            const cidadeInfo = document.getElementById("cidade-info")
+            if (userData.cidade_nome && userData.estado_uf) {
+                cidadeInfo.innerHTML = `<small>📍 ${userData.cidade_nome} - ${userData.estado_uf}</small>`
+            }
+        } catch (e) {
+            document.getElementById("usuario").innerText = "Administrador"
+        }
+    } else {
+        document.getElementById("usuario").innerText = "Administrador"
+    }
+
+    function logout(){
+        localStorage.removeItem("token")
+        localStorage.removeItem("usuario")
+        window.location="login"
+    }
+
+    // Funções do Modal
+    let ocorrenciaAtual = null
+
+    async function abrirModalOS(ocorrencia) {
+        ocorrenciaAtual = ocorrencia
+        const modal = document.getElementById("modalOS")
+        const contentDiv = document.getElementById("modalOSContent")
+        
+        contentDiv.innerHTML = '<div style="text-align: center; padding: 40px;">🔍 Carregando endereço...</div>'
+        modal.style.display = "block"
+
+        // Buscar endereço a partir das coordenadas
+        const endereco = await buscarEndereco(ocorrencia.latitude, ocorrencia.longitude)
+        const cep = extrairCEP(endereco)
+        const setores = ["Secretaria de Obras", "Secretaria de Serviços Públicos", "Secretaria de Transportes", "Secretaria de Meio Ambiente", "Secretaria de Urbanismo"]
+
+        contentDiv.innerHTML = `
+            <div class="os-info">
+                <p><strong>🔢 Nº OS:</strong> OS-${new Date().getFullYear()}${String(ocorrencia.id).padStart(4,'0')}</p>
+                <p><strong>📅 Data de Abertura:</strong> ${new Date().toLocaleString()}</p>
+                <p><strong>📌 Tipo de Ocorrência:</strong> ${ocorrencia.categoria}</p>
+                <p><strong>📝 Descrição:</strong> ${ocorrencia.descricao}</p>
+                <p><strong>📍 Localização:</strong><br>
+                   <span id="enderecoTexto">${endereco || 'Endereço não encontrado'}</span><br>
+                   <strong>Latitude:</strong> ${ocorrencia.latitude}<br>
+                   <strong>Longitude:</strong> ${ocorrencia.longitude}<br>
+                   <strong>CEP:</strong> ${cep || 'Não identificado'}
+                </p>
+                <p><strong>🏢 Setor Responsável:</strong><br>
+                   <select id="setorResponsavel" class="setor-select">
+                       ${setores.map(s => `<option value="${s}">${s}</option>`).join('')}
+                   </select>
+                </p>
+                <p><strong>👤 Atendente:</strong> ${document.getElementById("usuario").innerText}</p>
+                <p><strong>📱 Telefone de Contato:</strong> <input type="text" id="telefoneContato" placeholder="(XX) XXXXX-XXXX" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px;"></p>
+                <p><strong>📝 Observações:</strong><br>
+                   <textarea id="observacoes" rows="3" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" placeholder="Informações adicionais..."></textarea>
+                </p>
+                <p><strong>📎 Anexos:</strong> <input type="file" id="anexoOS" style="margin-top: 5px;"></p>
+                <p><strong>⏱️ Prazo Estimado:</strong> <input type="date" id="prazoEstimado" style="padding: 6px;"></p>
+            </div>
+            <div class="os-actions">
+                <button class="btn-os btn-imprimir" onclick="imprimirOS()">🖨️ Imprimir OS</button>
+                <button class="btn-os btn-concluir" onclick="concluirOcorrenciaModal()">✅ Concluir Ocorrência</button>
+                <button class="btn-os btn-fechar" onclick="fecharModalOS()">❌ Fechar</button>
+            </div>
+        `
+    }
+
+    async function buscarEndereco(lat, lon) {
+        try {
+            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=pt-BR`)
+            const data = await response.json()
+            return data.display_name || `${lat}, ${lon}`
+        } catch (error) {
+            console.error("Erro ao buscar endereço:", error)
+            return `${lat}, ${lon}`
+        }
+    }
+
+    function extrairCEP(endereco) {
+        if (!endereco) return null
+        const cepMatch = endereco.match(/\b\d{5}-?\d{3}\b/)
+        return cepMatch ? cepMatch[0] : null
+    }
+
+    function imprimirOS() {
+        const modalContent = document.getElementById("modalOSContent")
+        const conteudoOriginal = modalContent.cloneNode(true)
+        
+        const janela = window.open('', '_blank')
+        janela.document.write(`
+            <html>
+            <head>
+                <title>Ordem de Serviço - OS-${new Date().getFullYear()}${String(ocorrenciaAtual.id).padStart(4,'0')}</title>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 40px; }
+                    .header { text-align: center; margin-bottom: 30px; }
+                    .header h1 { color: #1976D2; }
+                    .info { margin: 20px 0; }
+                    .info p { margin: 8px 0; }
+                    .footer { margin-top: 50px; text-align: center; font-size: 12px; color: #999; }
+                    @media print {
+                        button { display: none; }
+                    }
+                </style>
+            </head>
+            <body>
+                ${conteudoOriginal.innerHTML}
+                <div class="footer">
+                    <p>Documento gerado eletronicamente pelo sistema Cidade Alerta</p>
+                </div>
+                <script>
+                    window.onload = () => { window.print(); setTimeout(() => window.close(), 1000); }
+                <\/script>
+            </body>
+            </html>
+        `)
+        janela.document.close()
+    }
+
+    async function concluirOcorrenciaModal() {
+        if (!ocorrenciaAtual) return
+        
+        if (confirm("Confirmar conclusão desta ocorrência?")) {
+            try {
+                const response = await fetch(`/api/ocorrencias/${ocorrenciaAtual.id}/concluir`, {
+                    method: "PUT"
+                })
+                
+                if (response.ok) {
+                    alert("✅ Ocorrência concluída com sucesso!")
+                    fecharModalOS()
+                    carregar()
+                } else {
+                    alert("❌ Erro ao concluir ocorrência")
+                }
+            } catch (error) {
+                alert("Erro de conexão")
+            }
+        }
+    }
+
+    function fecharModalOS() {
+        document.getElementById("modalOS").style.display = "none"
+        ocorrenciaAtual = null
+    }
+</script>
+
+<script src="dashboard.js"></script>
+
+</body>
+</html>
+
+<!-- <!DOCTYPE html>
+<html>
+
+<head>
 
 <title>Dashboard</title>
 
@@ -38,7 +416,7 @@ href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css"/>
 Cidade Alerta
 </div> -->
 
-<div class="topbar">
+<!-- <div class="topbar">
     <div class="title">
         Cidade Alerta
     </div>
@@ -52,21 +430,11 @@ Cidade Alerta
     </div>
 </div>
 
-<!-- <div class="user">
-<div style="text-align: right;">
-    <span id="usuario"></span>
-    <div id="cidade-info"></div>
-</div>
-<button onclick="logout()">Sair</button>
-</div> -->
-
-<!-- </div> -->
-
 <div class="container">
 
-<h2>Painel de Ocorrências</h2>
+<h2>Painel de Ocorrências</h2> -->
 
-<a href="nova-ocorrencia">
+<!-- <a href="nova-ocorrencia">
 <button>Nova ocorrência</button>
 </a>
 
@@ -88,9 +456,9 @@ Cidade Alerta
 
 </div>
 
-<script>
+<script> -->
 
-const token = localStorage.getItem("token")
+<!-- const token = localStorage.getItem("token")
 
 if(!token){
     window.location="login"
@@ -119,15 +487,15 @@ function logout(){
     localStorage.removeItem("token")
     localStorage.removeItem("usuario")
     window.location="login"
-}
+} -->
 
-</script>
+<!-- </script>
 
 <script src="dashboard.js"></script>
 
 </body>
 
-</html>
+</html> -->
 
 <!-- <!DOCTYPE html>
 <html>
@@ -336,4 +704,4 @@ window.location="login"
 
 </body>
 
-</html> --> -->
+</html> -->
