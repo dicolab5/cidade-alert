@@ -1,9 +1,9 @@
 // DASHBOARD ADMINISTRADOR 
 
-// PEGAR O TOKEN DO localStorage (NÃO COMENTAR!)
-const token = localStorage.getItem("token")
+// ⭐ NÃO declarar token aqui - ele já existe no escopo global do HTML
+// const token = localStorage.getItem("token")  <-- REMOVA ESTA LINHA
 
-// Verificar se está logado
+// Verificar se está logado (usando o token que já existe)
 if (!token) {
     window.location = "login"
 }
