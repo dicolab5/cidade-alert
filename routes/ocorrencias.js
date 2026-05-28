@@ -189,7 +189,114 @@ router.get("/", async (req,res)=>{
     }
 })
 
-// POST / - Criar ocorrência (COM MODERAÇÃO)
+// // POST / - Criar ocorrência (COM MODERAÇÃO)
+// router.post("/", upload.single("foto"), async (req,res)=>{
+//     console.log("📥 Recebendo requisição POST /ocorrencias");
+    
+//     try {
+//         const {descricao, categoria, latitude, longitude, cidade_ibge, usuario_id, usuario_uuid} = req.body
+        
+//         // ===========================================
+//         // VALIDAÇÕES BÁSICAS
+//         // ===========================================
+//         if (!cidade_ibge) {
+//             return res.status(400).json({ error: "cidade_ibge é obrigatório" })
+//         }
+
+//         if (!req.file) {
+//             return res.status(400).json({ error: "Foto é obrigatória" })
+//         }
+
+//         if (!descricao || descricao.trim().length < 5) {
+//             return res.status(400).json({ error: "Descrição muito curta" })
+//         }
+
+//         // Log do arquivo recebido
+//         console.log("📄 req.file:", {
+//             fieldname: req.file.fieldname,
+//             originalname: req.file.originalname,
+//             mimetype: req.file.mimetype,
+//             size: req.file.size,
+//             hasBuffer: !!req.file.buffer
+//         });
+
+//         // Verificar se o buffer existe
+//         if (!req.file.buffer) {
+//             console.error("❌ req.file.buffer não existe!");
+//             return res.status(400).json({ error: "Erro ao processar imagem" });
+//         }
+
+//         // ===========================================
+//         // OBTER ID DO USUÁRIO
+//         // ===========================================
+//         const usuarioIdFinal = await getUsuarioId(usuario_id, usuario_uuid);
+//         console.log("👤 Usuário ID final:", usuarioIdFinal);
+
+//         // ===========================================
+//         // MODERAÇÃO DE TEXTO
+//         // ===========================================
+//         console.log("🔍 Verificando texto...");
+//         const textCheck = checkText(descricao);
+        
+//         if (!textCheck.safe) {
+//             console.log("🚫 Texto ofensivo detectado:", textCheck.profaneWords);
+//             return res.status(400).json({ 
+//                 error: "Descrição contém palavras ofensivas",
+//                 cleanVersion: textCheck.clean,
+//                 profaneWords: textCheck.profaneWords
+//             });
+//         }
+
+//         // ===========================================
+//         // MODERAÇÃO DE IMAGEM
+//         // ===========================================
+//         console.log("🔍 Verificando imagem...");
+//         const imageCheck = await checkImage(req.file.buffer);
+        
+//         if (!imageCheck.safe) {
+//             console.log("🚫 Imagem imprópria detectada:", imageCheck.details);
+//             return res.status(400).json({ 
+//                 error: "Imagem contém conteúdo impróprio",
+//                 details: imageCheck.details
+//             });
+//         }
+
+//         // ===========================================
+//         // SE TUDO OK, FAZ UPLOAD PARA CLOUDINARY
+//         // ===========================================
+//         console.log("✅ Imagem aprovada, fazendo upload...");
+        
+//         const uploadResult = await uploadToCloudinary(req.file.buffer, req.file.mimetype);
+
+//         // ===========================================
+//         // SALVAR NO BANCO
+//         // ===========================================
+//         await pool.query(
+//             `INSERT INTO ocorrencias
+//              (descricao, categoria, latitude, longitude, foto_url, cidade_ibge, usuario_id)
+//              VALUES($1, $2, $3, $4, $5, $6, $7)`,
+//             [textCheck.clean, categoria, latitude, longitude, uploadResult.secure_url, cidade_ibge, usuarioIdFinal]
+//         )
+
+//         console.log("✅ Ocorrência criada com sucesso!");
+
+//         res.json({
+//             status: "ok", 
+//             message: "Ocorrência criada com sucesso",
+//             moderated: {
+//                 text: true,
+//                 image: true
+//             }
+//         })
+        
+//     } catch (error) {
+//         console.error("❌ Erro ao criar ocorrência:", error);
+//         console.error("Stack:", error.stack);
+//         res.status(500).json({ error: "Erro ao criar ocorrência: " + error.message })
+//     }
+// })
+
+// POST / - Criar ocorrência (COM MODERAÇÃO E CRIAÇÃO AUTOMÁTICA DE USUÁRIO)
 router.post("/", upload.single("foto"), async (req,res)=>{
     console.log("📥 Recebendo requisição POST /ocorrencias");
     
@@ -227,9 +334,37 @@ router.post("/", upload.single("foto"), async (req,res)=>{
         }
 
         // ===========================================
-        // OBTER ID DO USUÁRIO
+        // OBTER OU CRIAR USUÁRIO
         // ===========================================
-        const usuarioIdFinal = await getUsuarioId(usuario_id, usuario_uuid);
+        let usuarioIdFinal = null
+        
+        if (usuario_id) {
+            usuarioIdFinal = parseInt(usuario_id)
+        } else if (usuario_uuid) {
+            // Buscar usuário pelo UUID
+            const user = await pool.query(
+                "SELECT id FROM usuarios WHERE uuid = $1",
+                [usuario_uuid]
+            )
+            
+            if (user.rows.length > 0) {
+                usuarioIdFinal = user.rows[0].id
+                console.log(`✅ Usuário encontrado por UUID: ID ${usuarioIdFinal}`);
+            } else {
+                // CRIAR NOVO USUÁRIO ANÔNIMO
+                console.log(`👤 UUID não encontrado. Criando novo usuário anônimo: ${usuario_uuid}`);
+                
+                const newUser = await pool.query(
+                    `INSERT INTO usuarios (uuid, tipo, ativo, created_at, ultimo_acesso)
+                     VALUES ($1, 3, true, NOW(), NOW())
+                     RETURNING id`,
+                    [usuario_uuid]
+                )
+                usuarioIdFinal = newUser.rows[0].id
+                console.log(`✅ Novo usuário anônimo criado: ID ${usuarioIdFinal}`);
+            }
+        }
+        
         console.log("👤 Usuário ID final:", usuarioIdFinal);
 
         // ===========================================
@@ -269,14 +404,22 @@ router.post("/", upload.single("foto"), async (req,res)=>{
         const uploadResult = await uploadToCloudinary(req.file.buffer, req.file.mimetype);
 
         // ===========================================
-        // SALVAR NO BANCO
+        // SALVAR NO BANCO (COM usuario_id OPCIONAL)
         // ===========================================
-        await pool.query(
-            `INSERT INTO ocorrencias
-             (descricao, categoria, latitude, longitude, foto_url, cidade_ibge, usuario_id)
-             VALUES($1, $2, $3, $4, $5, $6, $7)`,
-            [textCheck.clean, categoria, latitude, longitude, uploadResult.secure_url, cidade_ibge, usuarioIdFinal]
-        )
+        let insertQuery = `
+            INSERT INTO ocorrencias
+            (descricao, categoria, latitude, longitude, foto_url, cidade_ibge
+            ${usuarioIdFinal ? ', usuario_id' : ''})
+            VALUES($1, $2, $3, $4, $5, $6
+            ${usuarioIdFinal ? ', $7' : ''})
+        `
+        
+        const queryParams = [textCheck.clean, categoria, latitude, longitude, uploadResult.secure_url, cidade_ibge]
+        if (usuarioIdFinal) {
+            queryParams.push(usuarioIdFinal)
+        }
+        
+        await pool.query(insertQuery, queryParams)
 
         console.log("✅ Ocorrência criada com sucesso!");
 
