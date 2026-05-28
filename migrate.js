@@ -360,6 +360,32 @@ CREATE TABLE IF NOT EXISTS ocorrencias (
 console.log("📊 Verificando/criando índices da tabela ocorrências...")
 
 // ===========================================
+// CORRIGIR CONSTRAINT DA TABELA OCORRENCIAS
+// ===========================================
+console.log("🔧 Verificando constraint da tabela ocorrencias...")
+
+try {
+    // Remover a constraint antiga se existir
+    await pool.query(`
+        ALTER TABLE ocorrencias 
+        DROP CONSTRAINT IF EXISTS ocorrencias_usuario_id_fkey;
+    `)
+    
+    // Adicionar nova constraint permitindo nulo (ON DELETE SET NULL)
+    await pool.query(`
+        ALTER TABLE ocorrencias 
+        ADD CONSTRAINT ocorrencias_usuario_id_fkey 
+        FOREIGN KEY (usuario_id) 
+        REFERENCES usuarios(id) 
+        ON DELETE SET NULL;
+    `)
+    
+    console.log("✅ Constraint da tabela ocorrencias corrigida (ON DELETE SET NULL)")
+} catch (error) {
+    console.log("⚠️ Erro ao corrigir constraint:", error.message)
+}
+
+// ===========================================
 // CRIAR TABELA DE MENSAGENS (versão robusta com verificações)
 // ===========================================
 console.log("📨 Verificando/criando tabela mensagens...")
