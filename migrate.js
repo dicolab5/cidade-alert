@@ -340,6 +340,25 @@ END $$;
 
 console.log("✅ Campos adicionados à tabela usuarios")
 
+// 4. Criar tabela de ocorrencias
+console.log("📝 Verificando/criando tabela ocorrencias...")
+await pool.query(`
+CREATE TABLE IF NOT EXISTS ocorrencias (
+    id SERIAL PRIMARY KEY,
+    descricao TEXT,
+    categoria VARCHAR(50),
+    latitude DECIMAL,
+    longitude DECIMAL,
+    foto_url TEXT,
+    status VARCHAR(20) DEFAULT 'aberto',
+    data_criacao TIMESTAMP DEFAULT NOW(),
+    data_conclusao TIMESTAMP,
+    cidade_ibge INT REFERENCES cidades(codigo_ibge),
+    usuario_id INTEGER REFERENCES usuarios(id)
+);
+`)
+console.log("📊 Verificando/criando índices da tabela ocorrências...")
+
 // ===========================================
 // CRIAR TABELA DE MENSAGENS (versão robusta com verificações)
 // ===========================================
@@ -425,24 +444,6 @@ FROM mensagens;
 `)
 
 console.log(`📊 Estatísticas de mensagens: ${statsMensagens.rows[0].total} total, ${statsMensagens.rows[0].nao_lidas} não lidas`)
-
-// 4. Criar tabela de ocorrencias
-console.log("📝 Verificando/criando tabela ocorrencias...")
-await pool.query(`
-CREATE TABLE IF NOT EXISTS ocorrencias (
-    id SERIAL PRIMARY KEY,
-    descricao TEXT,
-    categoria VARCHAR(50),
-    latitude DECIMAL,
-    longitude DECIMAL,
-    foto_url TEXT,
-    status VARCHAR(20) DEFAULT 'aberto',
-    data_criacao TIMESTAMP DEFAULT NOW(),
-    data_conclusao TIMESTAMP,
-    cidade_ibge INT REFERENCES cidades(codigo_ibge),
-    usuario_id INTEGER REFERENCES usuarios(id)
-);
-`)
 
 // ===========================================
 // INSERIR DADOS BÁSICOS (APENAS SE AS TABELAS ESTIVEREM VAZIAS)
@@ -6135,141 +6136,3 @@ console.log(`   - ocorrencias: ${ocorrenciasCount.rows[0].count} registros`)
 }
 
 module.exports = migrate
-
-// const pool = require("./db") 
-
-// async function migrate(){
-
-// // ===========================================
-// // LIMPEZA TOTAL - Descomente na primeira execução
-// // ===========================================
-// //console.log("🧹 Limpando banco de dados...")
-// //await pool.query(`DROP TABLE IF EXISTS ocorrencias CASCADE;`)
-// //await pool.query(`DROP TABLE IF EXISTS usuarios CASCADE;`)
-// //await pool.query(`DROP TABLE IF EXISTS cidades CASCADE;`)
-// //await pool.query(`DROP TABLE IF EXISTS estados CASCADE;`)
-// //console.log("✅ Banco limpo!")
-
-// // ===========================================
-// // CRIAÇÃO DAS TABELAS
-// // ===========================================
-
-// // 1. Criar tabela de estados (referenciada por cidades)
-// console.log("🏛️ Criando tabela estados...")
-// await pool.query(`
-// CREATE TABLE IF NOT EXISTS estados (
-//     codigo_uf INT PRIMARY KEY,
-//     uf CHAR(2) NOT NULL,
-//     nome VARCHAR(50) NOT NULL
-// );
-// `)
-
-// // 2. Criar tabela de cidades (EXATAMENTE como a do Kelvins)
-// console.log("🏙️ Criando tabela cidades...")
-// await pool.query(`
-// CREATE TABLE IF NOT EXISTS cidades(
-//     codigo_ibge INT NOT NULL,
-//     nome VARCHAR(100) NOT NULL,
-//     latitude FLOAT(8) NOT NULL,
-//     longitude FLOAT(8) NOT NULL,
-//     capital BOOLEAN NOT NULL,
-//     codigo_uf INT NOT NULL,
-//     siafi_id VARCHAR(4) NOT NULL UNIQUE,
-//     ddd INT NOT NULL,
-//     fuso_horario VARCHAR(32) NOT NULL,
-//     PRIMARY KEY (codigo_ibge),
-//     FOREIGN KEY (codigo_uf) REFERENCES estados (codigo_uf)
-// );
-// `)
-
-// // 3. Criar tabela de usuarios (adaptada para usar codigo_ibge)
-// console.log("👤 Criando tabela usuarios...")
-// await pool.query(`
-// CREATE TABLE IF NOT EXISTS usuarios (
-//     id SERIAL PRIMARY KEY,
-//     email VARCHAR(120) UNIQUE NOT NULL,
-//     senha TEXT NOT NULL,
-//     cidade_ibge INT REFERENCES cidades(codigo_ibge)  -- Referencia pelo código IBGE
-// );
-// `)
-
-// // 4. Criar tabela de ocorrencias (adaptada para usar codigo_ibge)
-// console.log("📝 Criando tabela ocorrencias...")
-// await pool.query(`
-// CREATE TABLE IF NOT EXISTS ocorrencias (
-//     id SERIAL PRIMARY KEY,
-//     descricao TEXT,
-//     categoria VARCHAR(50),
-//     latitude DECIMAL,
-//     longitude DECIMAL,
-//     foto_url TEXT,
-//     status VARCHAR(20) DEFAULT 'aberto',
-//     data_criacao TIMESTAMP DEFAULT NOW(),
-//     data_conclusao TIMESTAMP,
-//     cidade_ibge INT REFERENCES cidades(codigo_ibge),  -- Referencia pelo código IBGE
-//     usuario_id INTEGER REFERENCES usuarios(id)
-// );
-// `)
-
-// // ===========================================
-// // INSERIR DADOS BÁSICOS
-// // ===========================================
-
-// // Inserir estados brasileiros
-// // console.log("🗺️ Inserindo estados...")
-// // await pool.query(`
-// // INSERT INTO estados (codigo_uf, uf, nome) VALUES
-// // (11, 'RO', 'Rondônia'),
-// // (12, 'AC', 'Acre'),
-// // (13, 'AM', 'Amazonas'),
-// // (14, 'RR', 'Roraima'),
-// // (15, 'PA', 'Pará'),
-// // (16, 'AP', 'Amapá'),
-// // (17, 'TO', 'Tocantins'),
-// // (21, 'MA', 'Maranhão'),
-// // (22, 'PI', 'Piauí'),
-// // (23, 'CE', 'Ceará'),
-// // (24, 'RN', 'Rio Grande do Norte'),
-// // (25, 'PB', 'Paraíba'),
-// // (26, 'PE', 'Pernambuco'),
-// // (27, 'AL', 'Alagoas'),
-// // (28, 'SE', 'Sergipe'),
-// // (29, 'BA', 'Bahia'),
-// // (31, 'MG', 'Minas Gerais'),
-// // (32, 'ES', 'Espírito Santo'),
-// // (33, 'RJ', 'Rio de Janeiro'),
-// // (35, 'SP', 'São Paulo'),
-// // (41, 'PR', 'Paraná'),
-// // (42, 'SC', 'Santa Catarina'),
-// // (43, 'RS', 'Rio Grande do Sul'),
-// // (50, 'MS', 'Mato Grosso do Sul'),
-// // (51, 'MT', 'Mato Grosso'),
-// // (52, 'GO', 'Goiás'),
-// // (53, 'DF', 'Distrito Federal');
-// // `)
-
-// // Inserir Volta Redonda (enquanto não importa todas)
-// // console.log("📍 Inserindo Volta Redonda...")
-// // await pool.query(`
-// // INSERT INTO cidades (codigo_ibge, nome, latitude, longitude, capital, codigo_uf, siafi_id, ddd, fuso_horario) VALUES
-// // (3306305, 'Volta Redonda', -22.5200, -44.0997, FALSE, 33, '5925', 24, 'America/Sao_Paulo')
-// // ON CONFLICT (codigo_ibge) DO NOTHING;
-// // `)
-
-// // Criar usuário admin
-// // console.log("👑 Criando usuário admin...")
-// // await pool.query(`
-// // INSERT INTO usuarios (email, senha, cidade_ibge) 
-// // VALUES ('admin@admin.com', '123456', 3306305)
-// // ON CONFLICT (email) DO NOTHING;
-// // `)
-
-// console.log("🎉 MIGRATION CONCLUÍDA COM SUCESSO!")
-// console.log("📊 Tabelas criadas:")
-// console.log("   - estados")
-// console.log("   - cidades")
-// console.log("   - usuarios")
-// console.log("   - ocorrencias")
-// }
-
-// module.exports = migrate
