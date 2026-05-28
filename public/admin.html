@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin - Cidade Alerta</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="admin_style.css">
+</head>
+<body>
+    <div class="topbar">
+        <div class="title">🏛️ Cidade Alerta - Admin</div>
+        <div class="user">
+            <span id="usuario"></span>
+            <button onclick="logout()">Sair</button>
+        </div>
+    </div>
+
+    <div class="admin-container">
+        <h1>Painel Administrativo</h1>
+        
+        <!-- Estatísticas -->
+        <div class="stats-grid" id="stats">
+            <div class="stat-card">
+                <h3>👥 Total Usuários</h3>
+                <div class="number" id="totalUsuarios">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>📋 Total Ocorrências</h3>
+                <div class="number" id="totalOcorrencias">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>👑 Admins</h3>
+                <div class="number" id="totalAdmins">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>📨 Mensagens</h3>
+                <div class="number" id="totalMensagens">0</div>
+            </div>
+        </div>
+
+        <!-- Abas -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="mudarAba('usuarios')">👥 Usuários</button>
+            <button class="tab-btn" onclick="mudarAba('mensagens')">📨 Mensagens</button>
+            <button class="tab-btn" onclick="mudarAba('ocorrencias')">📋 Ocorrências</button>
+            <button class="tab-btn" onclick="mudarAba('sql')">🔧 SQL Query</button>
+        </div>
+
+        <!-- Aba Usuários -->
+        <div id="tab-usuarios" class="tab-content active">
+            <button class="btn-add" onclick="abrirModalUsuario()">➕ Novo Usuário</button>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Email</th>
+                            <th>Nome</th>
+                            <th>UUID</th>
+                            <th>Cidade</th>
+                            <th>Tipo</th>
+                            <th>Status</th>
+                            <th>FCM Token</th>
+                            <th>Criado em</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaUsuarios">
+                        <tr><td colspan="10">Carregando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Aba Mensagens -->
+        <div id="tab-mensagens" class="tab-content">
+            <div style="margin-bottom: 10px;">
+                <button class="btn-add" onclick="carregarMensagens()">🔄 Atualizar</button>
+                <select id="filtroMensagens" onchange="carregarMensagens()">
+                    <option value="">Todas</option>
+                    <option value="false">Não lidas</option>
+                    <option value="true">Lidas</option>
+                </select>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Usuário</th>
+                            <th>Ocorrência</th>
+                            <th>Título</th>
+                            <th>Mensagem</th>
+                            <th>Status</th>
+                            <th>Data</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaMensagens">
+                        <tr><td colspan="8">Carregando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Aba Ocorrências -->
+        <div id="tab-ocorrencias" class="tab-content">
+            <div style="margin-bottom: 10px;">
+                <button class="btn-add" onclick="carregarOcorrencias()">🔄 Atualizar</button>
+                <select id="filtroOcorrencias" onchange="carregarOcorrencias()">
+                    <option value="">Todas</option>
+                    <option value="aberto">Abertas</option>
+                    <option value="concluido">Concluídas</option>
+                </select>
+                <select id="filtroCidade" onchange="carregarOcorrencias()">
+                    <option value="">Todas as cidades</option>
+                </select>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Usuário</th>
+                            <th>Cidade</th>
+                            <th>Categoria</th>
+                            <th>Descrição</th>
+                            <th>Status</th>
+                            <th>Data</th>
+                            <th>Foto</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaOcorrencias">
+                        <tr><td colspan="9">Carregando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Aba SQL Query -->
+        <div id="tab-sql" class="tab-content">
+            <div class="sql-container">
+                <textarea id="sqlQuery" class="sql-editor" placeholder="SELECT * FROM usuarios LIMIT 10;"></textarea>
+                <div class="sql-buttons">
+                    <button class="sql-btn sql-btn-run" onclick="executarSQL()">▶ Executar</button>
+                    <button class="sql-btn sql-btn-clear" onclick="limparSQL()">🗑 Limpar</button>
+                    <button class="sql-btn sql-btn-example" onclick="carregarExemplo()">📋 Exemplo</button>
+                </div>
+                <div id="sqlResult"></div>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <h3>📊 Tabelas disponíveis:</h3>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn-add" style="background:#2196F3;" onclick="carregarExemploTabela('usuarios')">👥 usuarios</button>
+                    <button class="btn-add" style="background:#2196F3;" onclick="carregarExemploTabela('ocorrencias')">📋 ocorrencias</button>
+                    <button class="btn-add" style="background:#2196F3;" onclick="carregarExemploTabela('mensagens')">📨 mensagens</button>
+                    <button class="btn-add" style="background:#2196F3;" onclick="carregarExemploTabela('cidades')">🏙️ cidades</button>
+                    <button class="btn-add" style="background:#2196F3;" onclick="carregarExemploTabela('estados')">🗺️ estados</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Usuário -->
+    <div id="modalUsuario" class="modal">
+        <div class="modal-content">
+            <h2 id="modalUsuarioTitulo">Novo Usuário</h2>
+            <input type="hidden" id="usuarioId">
+            
+            <label>Email:</label>
+            <input type="email" id="email" placeholder="email@exemplo.com">
+            
+            <label>Senha:</label>
+            <input type="password" id="senha" placeholder="••••••••">
+            
+            <label>Nome:</label>
+            <input type="text" id="nome" placeholder="Nome completo">
+            
+            <label>Cidade:</label>
+            <select id="cidade">
+                <option value="">Selecione uma cidade</option>
+            </select>
+            
+            <label>Tipo:</label>
+            <select id="tipo">
+                <option value="3">Usuário Comum</option>
+                <option value="2">Moderador</option>
+                <option value="1">Administrador</option>
+            </select>
+            
+            <label>
+                <input type="checkbox" id="ativo" checked> Ativo
+            </label>
+            
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button onclick="salvarUsuario()" style="flex:1; background:#4CAF50; color:white;">Salvar</button>
+                <button onclick="fecharModalUsuario()" style="flex:1; background:#f44336; color:white;">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Mensagem -->
+    <div id="modalMensagem" class="modal">
+        <div class="modal-content">
+            <h2>Detalhes da Mensagem</h2>
+            <p><strong>Título:</strong> <span id="msgTitulo"></span></p>
+            <p><strong>Mensagem:</strong></p>
+            <p id="msgConteudo" style="background:#f5f5f5; padding:10px; border-radius:5px;"></p>
+            <p><strong>Data:</strong> <span id="msgData"></span></p>
+            <p><strong>Status:</strong> <span id="msgStatus"></span></p>
+            <button onclick="fecharModalMensagem()" style="background:#1976D2; color:white; padding:10px; width:100%; margin-top:10px;">Fechar</button>
+        </div>
+    </div>
+
+    <script src="admin_script.js"></script>
+</body>
+</html>
