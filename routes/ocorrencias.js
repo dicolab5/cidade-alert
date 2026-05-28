@@ -110,21 +110,64 @@ function checkText(text) {
     };
 }
 
-/**
- * Função auxiliar para obter ID do usuário
- */
+// /**
+//  * Função auxiliar para obter ID do usuário
+//  */
+// async function getUsuarioId(usuario_id, usuario_uuid) {
+//     if (usuario_id) {
+//         return parseInt(usuario_id);
+//     } else if (usuario_uuid) {
+//         const user = await pool.query(
+//             "SELECT id FROM usuarios WHERE uuid = $1",
+//             [usuario_uuid]
+//         );
+//         console.log("🔍 Buscando usuário por UUID:", usuario_uuid, "Resultado:", user.rows.length);
+//         return user.rows.length > 0 ? user.rows[0].id : null;
+//     }
+//     return null;
+// }
+
 async function getUsuarioId(usuario_id, usuario_uuid) {
+    // Se tem usuario_id, verificar se existe no banco
     if (usuario_id) {
-        return parseInt(usuario_id);
-    } else if (usuario_uuid) {
+        const id = parseInt(usuario_id)
+        const user = await pool.query(
+            "SELECT id FROM usuarios WHERE id = $1",
+            [id]
+        )
+        if (user.rows.length > 0) {
+            console.log(`✅ Usuário encontrado por ID: ${id}`);
+            return id
+        } else {
+            console.log(`⚠️ Usuário ID ${id} não existe, ignorando`);
+            return null
+        }
+    } 
+    
+    // Buscar por UUID
+    if (usuario_uuid) {
         const user = await pool.query(
             "SELECT id FROM usuarios WHERE uuid = $1",
             [usuario_uuid]
-        );
-        console.log("🔍 Buscando usuário por UUID:", usuario_uuid, "Resultado:", user.rows.length);
-        return user.rows.length > 0 ? user.rows[0].id : null;
+        )
+        if (user.rows.length > 0) {
+            console.log(`✅ Usuário encontrado por UUID: ${user.rows[0].id}`);
+            return user.rows[0].id
+        } else {
+            // Criar novo usuário
+            console.log(`👤 Criando novo usuário para UUID: ${usuario_uuid}`);
+            const newUser = await pool.query(
+                `INSERT INTO usuarios (uuid, tipo, ativo, created_at, ultimo_acesso)
+                 VALUES ($1, 3, true, NOW(), NOW())
+                 RETURNING id`,
+                [usuario_uuid]
+            )
+            console.log(`✅ Novo usuário criado: ID ${newUser.rows[0].id}`);
+            return newUser.rows[0].id
+        }
     }
-    return null;
+    
+    return null
 }
 
 /**
