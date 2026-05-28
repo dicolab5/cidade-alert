@@ -114,15 +114,36 @@ async function carregar(){
             cluster.addLayer(icon)
         }
 
+        // listaHTML += `
+        //     <div class="card">
+        //         <b>${o.categoria}</b>
+        //         <p>${o.descricao}</p>
+        //         <p class="status-${o.status}">
+        //             Status: ${o.status}
+        //         </p>
+        //         <p>Criado em: ${formatarData(o.data_criacao)}</p>
+        //         <p>Concluído em: ${formatarData(o.data_conclusao)}</p>
+        //     </div>
+        // `
         listaHTML += `
-            <div class="card">
-                <b>${o.categoria}</b>
-                <p>${o.descricao}</p>
-                <p class="status-${o.status}">
-                    Status: ${o.status}
+            <div class="card" style="border-left: 4px solid ${corCategoria(o.categoria)}; margin-bottom: 12px; padding: 12px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <b style="text-transform: uppercase;">${o.categoria}</b>
+                    <span class="status-${o.status}" style="color: ${o.status === 'aberto' ? 'orange' : 'green'};">
+                        ${o.status === 'aberto' ? '🟡 Aberto' : '✅ Concluído'}
+                    </span>
+                </div>
+                <p style="margin: 5px 0;">${o.descricao}</p>
+                <p style="margin: 5px 0; font-size: 0.9em; color: #666;">
+                    📅 Criado: ${formatarData(o.data_criacao)}<br>
+                    ✅ Concluído: ${formatarData(o.data_conclusao)}
                 </p>
-                <p>Criado em: ${formatarData(o.data_criacao)}</p>
-                <p>Concluído em: ${formatarData(o.data_conclusao)}</p>
+                <div class="card-acoes">
+                    ${o.status !== "concluido" ? `
+                        <button class="btn-os-card" onclick="abrirModalOS(${JSON.stringify(o).replace(/"/g, '&quot;')})">📋 Gerar OS</button>
+                        <button class="btn-concluir-card" onclick="concluir(${o.id})">✅ Concluir</button>
+                    ` : ''}
+                </div>
             </div>
         `
     })
